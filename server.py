@@ -13,79 +13,28 @@ app = Flask(__name__)
 def hello():
     return "Hello World!"
 
-# @app.route("/notesteroadster")
-# def readb64(uri):
-#    encoded_data = uri.split(',')[1]
-#    nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
-#    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-#    return img
-#
-# # img = readb64(data_uri)
-# # print(img)
-# # img = cv2.imread("tester.jpg")
-#
-#
-#
-# text = pytesseract.image_to_string(img)
-# sentences = []
-# line = ""
-# for i in text:
-#     if i != ".":
-#         if i != "\n":
-#             if line == "" and not(i.isalpha()):
-#                 continue
-#             else:
-#                 line += i
-#         else:
-#             line += " "
-#     else:
-#         line += "."
-#         sentences.append(line.lstrip())
-#         line = ""
-#
-# for i in sentences:
-#     print(i)
-#
-# app.run()
-
 img_list = []
 
 @app.route('/notesupload', methods=['POST'])
 def post_notes():
     uri = request.get_json()
-    img = uri['uri']
+    b64 = uri['uri']
     img_list.append(uri)
-    return jsonify(img)
 
 
-@app.route('/notesupload')
-def get_sentences():
-    for img in img_list:
-        uri = img['uri']
-    encoded_data = uri.split(',')[1]
+    encoded_data = b64.split(',')[1]
     nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    text = pytesseract.image_to_string(img)
-    sentences = []
-    line = ""
-    for i in text:
-       if i != ".":
-           if i != "\n":
-               if line == "" and not(i.isalpha()):
-                   continue
-               else:
-                   line += i
-           else:
-               line += " "
-       else:
-           line += "."
-           sentences.append(line.lstrip())
-           line = ""
+    h, w, c = img.shape
+    boxes = pytesseract.image_to_boxes(img)
+    rv = []
 
-    # text = pytesseract.image_to_data(img, output_type=Output.DICT)
-    # print(text.keys())
-    #
-    # return jsonify({'sentences': sentences})
+    for b in boxes.splitlines():
+        b = b.split(' ')
+        # (a, b) a = top right xy coordinates, b = bottom right xy coordinate * ratio form
+        rv.append(((int(b[1]) / w, (h - int(b[2])) / h), (int(b[3]) / w, (h - int(b[4])) / h)))
+
+    return jsonify({"rv": rv})
 
 app.run()
